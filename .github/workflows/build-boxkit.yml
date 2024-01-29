@@ -28,35 +28,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Image Metadata
-        uses: docker/metadata-action@v5
+      - name: Set up Docker Metadata
         id: meta
-        with:
-          images: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha
-            type=ref,event=branch
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "TAG=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          else
+            echo "TAG=latest" >> $GITHUB_ENV
+          fi
 
       - name: Build Image
         uses: redhat-actions/buildah-build@v2
         with:
           containerfiles: ./Containerfile
-          image: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.source=${{ github.repository_url }}
+            org.opencontainers.image.version=${{ github.sha }}
           oci: false
 
       - name: Lowercase Registry
         id: registry_case
-        uses: ASzc/change-string-case-action@v6
-        with:
-          string: ${{ env.IMAGE_REGISTRY }}
+        run: echo "REGISTRY=${{ env.IMAGE_REGISTRY, }} | tr '[:upper:]' '[:lower:]'" >> $GITHUB_ENV
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ steps.meta.outputs.tags }}
-          tags: ${{ steps.meta.outputs.tags }}
-          registry: ${{ steps.registry_case.outputs.lowercase }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
 
@@ -73,9 +75,7 @@ jobs:
       - name: Sign container image
         if: github.event_name != 'pull_request'
         run: |
-          for tag in ${{ steps.meta.outputs.tags }}; do
-            cosign sign -y --key $COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/$tag
-          done
+          cosign sign -y --key $COSIGN_PRIVATE_KEY ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
         env:
           COSIGN_EXPERIMENTAL: false
 
