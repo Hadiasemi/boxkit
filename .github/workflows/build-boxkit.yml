@@ -51,13 +51,11 @@ jobs:
     
       - name: Lowercase Image Name
         run: echo "IMAGE_NAME=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-
-
+        
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: ${{ env.TAG }}
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
