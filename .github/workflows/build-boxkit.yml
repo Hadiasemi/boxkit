@@ -37,11 +37,7 @@ jobs:
             ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=sha
-            type=semver,pattern={{version}}
-          labels: |
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/boxkit/main/README.md
 
       - name: Build Image
         id: build_image
