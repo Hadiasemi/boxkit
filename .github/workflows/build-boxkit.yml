@@ -12,7 +12,6 @@ on:
       - '**/README.md'
 env:
   IMAGE_NAME: boxkit
-  IMAGE_TAGS: latest
   IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
@@ -38,6 +37,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha
+            type=semver,pattern={{version}}
 
       - name: Build Image
         id: build_image
@@ -60,7 +60,7 @@ jobs:
         id: push
         with:
           image: ${{ steps.meta.outputs.tags }}
-          tags: ${{ steps.build_image.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags }}
           registry: ${{ steps.registry_case.outputs.lowercase }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
