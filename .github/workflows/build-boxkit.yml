@@ -48,9 +48,10 @@ jobs:
             org.opencontainers.image.source=${{ github.repository_url }}
             org.opencontainers.image.version=${{ github.sha }}
           oci: false
+    
+      - name: Lowercase Image Name
+        run: echo "IMAGE_NAME=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
-      - name: Lowercase Registry
-        run: echo "REGISTRY=$(echo '${{ env.IMAGE_REGISTRY }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
 
       - name: Push To GHCR
