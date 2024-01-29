@@ -72,13 +72,18 @@ jobs:
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.3.0
-
-      - name: Sign container image
-        if: github.event_name != 'pull_request'
-        run: |
-          cosign sign -y --key $COSIGN_PRIVATE_KEY ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+        
+      - name: Decode Cosign Private Key
+        run: echo "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 -d > cosign.key
         env:
-          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+
+
+      - name: Decode Cosign Private Key
+        run: echo "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 -d > cosign.key
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+
 
       - name: Echo outputs
         run: echo "${{ toJSON(steps.push.outputs) }}"
