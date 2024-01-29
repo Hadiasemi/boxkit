@@ -51,7 +51,7 @@ jobs:
 
       - name: Lowercase Registry
         id: registry_case
-        run: echo "REGISTRY=${{ env.IMAGE_REGISTRY, }} | tr '[:upper:]' '[:lower:]'" >> $GITHUB_ENV
+        run: echo "REGISTRY=${{ env.IMAGE_REGISTRY }} | tr '[:upper:]' '[:lower:]'" >> $GITHUB_ENV
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
