@@ -11,9 +11,8 @@ on:
     paths-ignore:
       - '**/README.md'
 env:
-    IMAGE_NAME: boxkit
-    IMAGE_TAGS: latest
-    IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+  IMAGE_NAME: boxkit
+  IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
   push-ghcr:
@@ -25,64 +24,52 @@ jobs:
       id-token: write
     strategy:
       fail-fast: false
-    steps: 
-      # Checkout push-to-registry action GitHub repository
-      - name: Checkout Push to Registry action
+    steps:
+      - name: Checkout repository
         uses: actions/checkout@v4
-        
-      # Build metadata
-      - name: Image Metadata
-        uses: docker/metadata-action@v5
-        id: meta
-        with:
-          images: |
-            ${{ env.IMAGE_NAME }}
-          labels: |
-            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/ublue-os/boxkit/main/README.md
 
-      # Build image using Buildah action
+      - name: Set up Docker Metadata
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "TAG=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+          else
+            echo "TAG=latest" >> $GITHUB_ENV
+          fi
+
       - name: Build Image
-        id: build_image
         uses: redhat-actions/buildah-build@v2
         with:
-          containerfiles: |
-            ./Containerfile
-          image: ${{ env.IMAGE_NAME }}
-          tags: ${{ env.IMAGE_TAGS }}
-          labels: ${{ steps.meta.outputs.labels }}
+          containerfiles: ./Containerfile
+          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          labels: |
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.source=${{ github.repository_url }}
+            org.opencontainers.image.version=${{ github.sha }}
           oci: false
-          
-      # Workaround bug where capital letters in your GitHub username make it impossible to push to GHCR.
-      # https://github.com/macbre/push-to-ghcr/issues/12
-      - name: Lowercase Registry
-        id: registry_case
-        uses: ASzc/change-string-case-action@v6
-        with:
-          string: ${{ env.IMAGE_REGISTRY }}
 
-      # Push the image to GHCR (Image Registry)
+      - name: Lowercase Registry
+        run: echo "REGISTRY=$(echo '${{ env.IMAGE_REGISTRY }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
-        id: push
-        env:
-          REGISTRY_USER: ${{ github.actor }}
-          REGISTRY_PASSWORD: ${{ github.token }}
         with:
-          image: ${{ steps.build_image.outputs.image }}
-          tags: ${{ steps.build_image.outputs.tags }}
-          registry: ${{ steps.registry_case.outputs.lowercase }}
-          username: ${{ env.REGISTRY_USER }}
-          password: ${{ env.REGISTRY_PASSWORD }}
-          extra-args: |
-            --disable-content-trust
-            
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: ${{ env.TAG }}
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-            
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.3.0
         
@@ -92,12 +79,11 @@ jobs:
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
 
 
-      - name: Sign container image
-        if: github.event_name != 'pull_request'
-        run: |
-          cosign sign -y --key cosign.key ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+      - name: Decode Cosign Private Key
+        run: echo "${{ secrets.COSIGN_PRIVATE_KEY }}" | base64 -d > cosign.key
         env:
-          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+
 
       - name: Echo outputs
         run: echo "${{ toJSON(steps.push.outputs) }}"
