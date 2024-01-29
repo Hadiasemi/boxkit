@@ -50,17 +50,18 @@ jobs:
           oci: false
 
       - name: Lowercase Registry
-        id: registry_case
-        run: echo "REGISTRY=${{ env.IMAGE_REGISTRY }} | tr '[:upper:]' '[:lower:]'" >> $GITHUB_ENV
+        run: echo "REGISTRY=$(echo '${{ env.IMAGE_REGISTRY }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
 
       - name: Push To GHCR
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_NAME }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: ${{ env.TAG }}
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
+
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
